@@ -110,7 +110,7 @@ tr:hover td{background:rgba(108,99,255,.06);}
       <div class="th"><h3>Journal Detail</h3><input class="sb" id="sb" placeholder="🔍 Search journal..." oninput="search()"></div>
       <div class="tw"><table><thead><tr>
         <th onclick="srt('y')">Year ↕</th><th onclick="srt('j')">Journal ↕</th><th onclick="srt('cat')">Category ↕</th>
-        <th onclick="srt('jif')">JIF ↕</th><th onclick="srt('q')">Quartile ↕</th><th onclick="srt('jif5')">JIF 5yr ↕</th>
+        <th onclick="srt('jif')">JIF ↕</th><th onclick="srt('rank')">Rank ↕</th><th onclick="srt('q')">Quartile ↕</th><th onclick="srt('jif5')">JIF 5yr ↕</th>
         <th onclick="srt('jci')">JCI ↕</th><th onclick="srt('cit')">Citations ↕</th><th>Publisher</th>
       </tr></thead><tbody id="tb"></tbody></table></div>
       <div class="pag"><button onclick="pg(-1)">‹ Prev</button><span id="pn"></span><button onclick="pg(1)">Next ›</button><span class="pi" id="pi"></span></div>
@@ -125,6 +125,16 @@ const CAT_COLORS={"BUSINESS": "#6c63ff", "BUSINESS, FINANCE": "#ff6584", "ECONOM
 const CATS=["BUSINESS", "BUSINESS, FINANCE", "ECONOMICS", "MANAGEMENT", "REGIONAL & URBAN PLANNING", "URBAN STUDIES", "WOMENS STUDIES"];
 let fil=[...RAW],disp=[...RAW],pg_=1,sCol='jif',sDir=-1;
 const PS=50,BG='#0f1117',GRID='#2a2a3a',MUTED='#8888aa',Q_C=['#43e97b','#38f9d7','#f7971e','#ff6584'];
+// Compute rank within category+year by JIF descending
+(()=>{
+  const groups={};
+  RAW.forEach(r=>{const k=r.cat+'|'+r.y;if(!groups[k])groups[k]=[];groups[k].push(r);});
+  Object.values(groups).forEach(g=>{
+    const sorted=[...g].sort((a,b)=>(b.jif??-Infinity)-(a.jif??-Infinity));
+    const tot=sorted.length;
+    sorted.forEach((r,i)=>{r.rank=i+1;r.tot=tot;});
+  });
+})();
 [...AGG.years].reverse().forEach(y=>{['fY1','fY2'].forEach(id=>{const o=document.createElement('option');o.value=y;o.textContent=y;document.getElementById(id).appendChild(o);});});
 function renderCatKpis(d){
   document.getElementById('catKpis').innerHTML=OV_CATS.map(c=>{
@@ -207,7 +217,7 @@ function f(v){return v!=null?Number.isFinite(v)?v.toLocaleString('en-US',{maximu
 function renderTable(){
   const st=(pg_-1)*PS;
   const sorted=[...disp].sort((a,b)=>{const av=a[sCol],bv=b[sCol];if(av==null&&bv==null)return 0;if(av==null)return 1;if(bv==null)return-1;return av<bv?-sDir:av>bv?sDir:0;});
-  document.getElementById('tb').innerHTML=sorted.slice(st,st+PS).map(r=>`<tr><td>${r.y}</td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis" title="${r.j}">${r.j}</td><td>${catBadge(r.cat)}</td><td>${f(r.jif)}</td><td>${r.q?`<span class="bq b${r.q}">${r.q}</span>`:'—'}</td><td>${f(r.jif5)}</td><td>${f(r.jci)}</td><td>${r.cit!=null?r.cit.toLocaleString():'—'}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;color:var(--m)" title="${r.pub||''}">${r.pub||'—'}</td></tr>`).join('');
+  document.getElementById('tb').innerHTML=sorted.slice(st,st+PS).map(r=>`<tr><td>${r.y}</td><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis" title="${r.j}">${r.j}</td><td>${catBadge(r.cat)}</td><td>${f(r.jif)}</td><td style="color:var(--m);font-size:.8rem">${r.rank!=null?r.rank+'/'+r.tot:'—'}</td><td>${r.q?`<span class="bq b${r.q}">${r.q}</span>`:'—'}</td><td>${f(r.jif5)}</td><td>${f(r.jci)}</td><td>${r.cit!=null?r.cit.toLocaleString():'—'}</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;color:var(--m)" title="${r.pub||''}">${r.pub||'—'}</td></tr>`).join('');
   const tot=disp.length,tp=Math.ceil(tot/PS)||1;
   document.getElementById('pi').textContent=`${st+1}–${Math.min(st+PS,tot)} of ${tot.toLocaleString()}`;
   let s='';for(let p=Math.max(1,pg_-2);p<=Math.min(tp,pg_+2);p++)s+=`<button onclick="goPage(${p})"class="${p===pg_?'act':''}">${p}</button>`;
